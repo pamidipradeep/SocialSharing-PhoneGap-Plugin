@@ -260,7 +260,7 @@ public class SocialSharing extends CordovaPlugin {
             } else {
               sendIntent.addCategory(Intent.CATEGORY_LAUNCHER);
               sendIntent.setComponent(new ComponentName(activity.applicationInfo.packageName,
-                  passedActivityName != null ? passedActivityName : activity.name));
+                      passedActivityName != null ? passedActivityName : activity.name));
               mycordova.startActivityForResult(plugin, sendIntent, 0);
 
               if (pasteMessage != null) {
@@ -374,8 +374,12 @@ public class SocialSharing extends CordovaPlugin {
       sendIntent.setType(fileType);
       saveFile(Base64.decode(encodedImg, Base64.DEFAULT), dir, sanitizeFilename(fileName));
       localImage = "file://" + dir + "/" + fileName;
+    } else if (image.startsWith("file://")) { //TIMETRARSE: Code added to move file from cached location to external storage
+      String filename = getFileName(image);
+      localImage = "file://" + dir + "/" + filename;
+      copyFile(image, dir, filename);
     } else if (!image.startsWith("file://")) {
-      throw new IllegalArgumentException("URL_NOT_SUPPORTED");
+      throw new IllegalArgumentException("URL_NOT_SUPPORTED - " + image + "; dir=" + dir);
     }
     return Uri.parse(localImage);
   }
@@ -561,6 +565,29 @@ public class SocialSharing extends CordovaPlugin {
     return buffer.toByteArray();
   }
 
+  private void copyFile(String sourceUri, String dirName, String fileName){
+    String localFile = Uri.parse(sourceUri).getPath();
+    final File dir = new File(dirName);
+    try {
+      InputStream in = new FileInputStream(localFile);
+      OutputStream out = new FileOutputStream(new File(dir, fileName));
+
+      // Copy the bits from instream to outstream
+      byte[] buf = new byte[1024];
+      int len;
+
+      while ((len = in.read(buf)) > 0) {
+        out.write(buf, 0, len);
+      }
+
+      in.close();
+      out.close();
+    }catch(Exception e) {
+      throw new IllegalArgumentException("something went wrong. " + e.getMessage()
+              + ". filename:" + fileName + " dir" + dirName
+              + " localFile:" + localFile);
+    }
+  }
   private void saveFile(byte[] bytes, String dirName, String fileName) throws IOException {
     final File dir = new File(dirName);
     final FileOutputStream fos = new FileOutputStream(new File(dir, fileName));
